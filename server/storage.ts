@@ -46,7 +46,11 @@ export class MemStorage implements IStorage {
     ];
 
     defaultCategories.forEach(cat => {
-      const category: Category = { ...cat, id: randomUUID() };
+      const category: Category = { 
+        ...cat, 
+        id: randomUUID(),
+        description: cat.description || null
+      };
       this.categories.set(category.id, category);
     });
 
@@ -62,7 +66,13 @@ export class MemStorage implements IStorage {
     ];
 
     defaultProducts.forEach(prod => {
-      const product: Product = { ...prod, id: randomUUID() };
+      const product: Product = { 
+        ...prod, 
+        id: randomUUID(),
+        operator: prod.operator || null,
+        description: prod.description || null,
+        isActive: prod.isActive ?? true
+      };
       this.products.set(product.id, product);
     });
   }
@@ -72,6 +82,12 @@ export class MemStorage implements IStorage {
     const transaction: Transaction = {
       ...insertTransaction,
       id,
+      status: insertTransaction.status || "pending",
+      paymentProofUrl: insertTransaction.paymentProofUrl || null,
+      indotelRefId: insertTransaction.indotelRefId || null,
+      periode: insertTransaction.periode || null,
+      tahun: insertTransaction.tahun || null,
+      nominal: insertTransaction.nominal || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -130,7 +146,11 @@ export class MemStorage implements IStorage {
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {
     const id = randomUUID();
-    const category: Category = { ...insertCategory, id };
+    const category: Category = { 
+      ...insertCategory, 
+      id,
+      description: insertCategory.description || null
+    };
     this.categories.set(id, category);
     return category;
   }
@@ -155,7 +175,13 @@ export class MemStorage implements IStorage {
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
     const id = randomUUID();
-    const product: Product = { ...insertProduct, id };
+    const product: Product = { 
+      ...insertProduct, 
+      id,
+      operator: insertProduct.operator || null,
+      description: insertProduct.description || null,
+      isActive: insertProduct.isActive ?? true
+    };
     this.products.set(id, product);
     return product;
   }
