@@ -5,6 +5,12 @@ import { insertTransactionSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import https from "https";
+
+// Create HTTPS agent that accepts self-signed certificates
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -27,9 +33,50 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Get all categories
+  // Get all categories (try Indotel first, fallback to local)
   app.get("/api/categories", async (req, res) => {
     try {
+      // Try to get categories from Indotel API first
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (indotelUrl && indotelPassword && indotelMMID) {
+        try {
+          const requestBody = {
+            mmid: indotelMMID
+          };
+          
+          const response = await fetch(`https://apiindotel.mesinr1.com/V1/api/product-categories`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'rqid': indotelPassword,
+            },
+            body: JSON.stringify(requestBody),
+            agent: httpsAgent,
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success' && result.data) {
+              // Transform Indotel categories to our format
+              const transformedCategories = result.data.map((cat: any, index: number) => ({
+                id: `indotel-${index}`,
+                code: cat.category_code || cat.name?.toUpperCase() || `CAT_${index}`,
+                name: cat.name || cat.category_name || 'Unknown',
+                icon: getIconForCategory(cat.name || cat.category_name || ''),
+                description: cat.description || `Produk ${cat.name || 'kategori'}`
+              }));
+              return res.json(transformedCategories);
+            }
+          }
+        } catch (indotelError) {
+          console.log('Indotel categories API error, using fallback:', indotelError);
+        }
+      }
+      
+      // Fallback to local categories
       const categories = await storage.getAllCategories();
       res.json(categories);
     } catch (error) {
@@ -37,7 +84,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get products by category
+  // Helper function to map category names to icons
+  function getIconForCategory(categoryName: string): string {
+    const name = categoryName.toLowerCase();
+    if (name.includes('pulsa') || name.includes('credit')) return 'mobile-alt';
+    if (name.includes('data') || name.includes('internet')) return 'wifi';
+    if (name.includes('pln') || name.includes('listrik') || name.includes('token')) return 'bolt';
+    if (name.includes('pdam') || name.includes('air') || name.includes('water')) return 'tint';
+    if (name.includes('bpjs') || name.includes('kesehatan') || name.includes('health')) return 'heart';
+    if (name.includes('game') || name.includes('voucher') || name.includes('gaming')) return 'gamepad';
+    if (name.includes('tv') || name.includes('cable')) return 'tv';
+    if (name.includes('internet') || name.includes('wifi')) return 'wifi';
+    if (name.includes('bank') || name.includes('transfer')) return 'credit-card';
+    return 'mobile-alt'; // default icon
+  }
+
+  // Get products by category (try Indotel first, fallback to local)
   app.get("/api/products", async (req, res) => {
     try {
       const { category, type } = req.query;
@@ -45,6 +107,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Parameter kategori diperlukan" });
       }
       
+      // Try to get products from Indotel API first
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (indotelUrl && indotelPassword && indotelMMID) {
+        try {
+          const requestBody = {
+            mmid: indotelMMID,
+            category: category as string,
+            type: (type as string)?.toUpperCase() || 'PRABAYAR'
+          };
+          
+          const response = await fetch(`https://${indotelUrl}/V1/api/products`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'rqid': indotelPassword,
+            },
+            body: JSON.stringify(requestBody),
+            agent: httpsAgent,
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'success' && result.data) {
+              // Transform Indotel products to our format
+              const transformedProducts = result.data.map((prod: any, index: number) => ({
+                id: `indotel-${prod.product_code || index}`,
+                code: prod.product_code || `PROD_${index}`,
+                name: prod.product_name || prod.name || 'Unknown Product',
+                categoryCode: category as string,
+                operator: prod.operator || prod.provider || null,
+                price: parseInt(prod.price || prod.sell_price || '0'),
+                description: prod.description || `${prod.product_name || 'Produk'} - ${prod.operator || ''}`,
+                type: (type as string)?.toUpperCase() || 'PRABAYAR',
+                isActive: prod.status === 'active' || prod.is_active || true
+              }));
+              return res.json(transformedProducts);
+            }
+          }
+        } catch (indotelError) {
+          console.log('Indotel products API error, using fallback:', indotelError);
+        }
+      }
+      
+      // Fallback to local products
       const products = await storage.getProductsByCategory(
         category as string, 
         type as string
@@ -200,13 +309,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ...(transaction.nominal && { nominal: transaction.nominal.toString() })
             };
 
-            const response = await fetch(`${indotelUrl}/V1/api/topup`, {
+            const response = await fetch(`https://${indotelUrl}/V1/api/topup`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'rqid': indotelPassword,
               },
               body: JSON.stringify(requestBody),
+              agent: httpsAgent,
             });
 
             const result = await response.json();
@@ -271,13 +381,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/V1/api/inquiry`, {
+      const response = await fetch(`https://${indotelUrl}/V1/api/inquiry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
+        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -307,13 +418,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/V1/api/payment`, {
+      const response = await fetch(`https://${indotelUrl}/V1/api/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
+        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -343,13 +455,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/V1/api/topup`, {
+      const response = await fetch(`https://${indotelUrl}/V1/api/topup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
+        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -379,13 +492,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mmid: indotelMMID
       };
       
-      const response = await fetch(`${indotelUrl}/V1/api/product-categories`, {
+      const response = await fetch(`https://${indotelUrl}/V1/api/product-categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
+        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -416,13 +530,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/V1/api/products`, {
+      const response = await fetch(`https://${indotelUrl}/V1/api/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
+        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -452,13 +567,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mmid: indotelMMID
       };
       
-      const response = await fetch(`${indotelUrl}/V1/api/balance`, {
+      const response = await fetch(`https://${indotelUrl}/V1/api/balance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
+        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -471,6 +587,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Indotel balance error:', error);
       res.status(500).json({ message: "Gagal mengecek saldo Indotel" });
     }
+  });
+
+  // Test Indotel API connectivity
+  app.get("/api/indotel-status", async (req, res) => {
+    try {
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.json({
+          status: 'not_configured',
+          message: 'Kredensial Indotel belum dikonfigurasi',
+          server_ip: null
+        });
+      }
+
+      try {
+        // Test balance endpoint to check connectivity
+        const requestBody = { mmid: indotelMMID };
+        const response = await fetch(`https://apiindotel.mesinr1.com/V1/api/balance`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'rqid': indotelPassword,
+          },
+          body: JSON.stringify(requestBody),
+          agent: httpsAgent,
+        });
+
+        const result = await response.json();
+        
+        if (result.rc === '92' && result.message?.includes('Invalid IP')) {
+          const ipMatch = result.message.match(/IP:(\d+\.\d+\.\d+\.\d+)/);
+          const serverIP = ipMatch ? ipMatch[1] : 'Unknown';
+          
+          return res.json({
+            status: 'ip_not_registered',
+            message: 'API tersambung tapi IP belum terdaftar',
+            server_ip: serverIP,
+            indotel_response: result
+          });
+        } else if (result.status === 'success') {
+          return res.json({
+            status: 'connected',
+            message: 'API Indotel terhubung dan aktif',
+            server_ip: null,
+            balance: result.balance || 'N/A'
+          });
+        } else {
+          return res.json({
+            status: 'error',
+            message: result.message || 'Error tidak diketahui',
+            indotel_response: result
+          });
+        }
+      } catch (fetchError) {
+        return res.json({
+          status: 'connection_error',
+          message: 'Tidak dapat terhubung ke server Indotel',
+          error: (fetchError as Error).message
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        status: 'server_error',
+        message: 'Error server internal',
+        error: (error as Error).message
+      });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "OK", timestamp: new Date().toISOString() });
   });
 
   const httpServer = createServer(app);

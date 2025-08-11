@@ -7,6 +7,121 @@ import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// API Status Card Component
+function ApiStatusCard() {
+  const { data: apiStatus, isLoading } = useQuery({
+    queryKey: ['/api/indotel-status'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mb-6">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+            <span className="text-gray-600">Mengecek status API...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!apiStatus) {
+    return (
+      <div className="mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <span className="text-red-600">❌</span>
+            <h4 className="font-semibold text-red-800">Error Status API</h4>
+          </div>
+          <p className="text-sm text-red-700">Tidak dapat mengecek status API Indotel</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getStatusDisplay = () => {
+    switch (apiStatus.status) {
+      case 'connected':
+        return {
+          bg: 'bg-green-50',
+          border: 'border-green-200',
+          text: 'text-green-800',
+          textSecondary: 'text-green-700',
+          textTertiary: 'text-green-600',
+          icon: '✅',
+          title: 'API Indotel Terhubung',
+          message: `Saldo: ${apiStatus.balance || 'N/A'}`,
+          tips: ['Transaksi akan diproses otomatis', 'Sistem berjalan normal']
+        };
+      case 'ip_not_registered':
+        return {
+          bg: 'bg-amber-50',
+          border: 'border-amber-200',
+          text: 'text-amber-800',
+          textSecondary: 'text-amber-700',
+          textTertiary: 'text-amber-600',
+          icon: '⚠️',
+          title: 'IP Belum Terdaftar',
+          message: `IP server: ${apiStatus.server_ip}`,
+          tips: [
+            'Hubungi provider Indotel untuk mendaftarkan IP tersebut',
+            'Sementara transaksi akan diproses manual',
+            'API sudah terkonfigurasi dengan benar'
+          ]
+        };
+      case 'not_configured':
+        return {
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          text: 'text-red-800',
+          textSecondary: 'text-red-700',
+          textTertiary: 'text-red-600',
+          icon: '❌',
+          title: 'API Belum Dikonfigurasi',
+          message: 'Kredensial Indotel belum diatur',
+          tips: ['Hubungi admin untuk mengatur environment variables', 'INDOTEL_URL, INDOTEL_MMID, INDOTEL_PASSWORD']
+        };
+      default:
+        return {
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          text: 'text-red-800',
+          textSecondary: 'text-red-700',
+          textTertiary: 'text-red-600',
+          icon: '❌',
+          title: 'Error Koneksi',
+          message: apiStatus.message || 'Error tidak diketahui',
+          tips: ['Cek koneksi internet', 'Periksa konfigurasi API']
+        };
+    }
+  };
+
+  const statusDisplay = getStatusDisplay();
+
+  return (
+    <div className="mb-6">
+      <div className={`${statusDisplay.bg} ${statusDisplay.border} border rounded-lg p-4`}>
+        <div className="flex items-center space-x-2 mb-2">
+          <span>{statusDisplay.icon}</span>
+          <h4 className={`font-semibold ${statusDisplay.text}`}>
+            Status API Indotel: {statusDisplay.title}
+          </h4>
+        </div>
+        <p className={`text-sm ${statusDisplay.textSecondary} mb-3`}>
+          {statusDisplay.message}
+        </p>
+        <div className={`text-xs ${statusDisplay.textTertiary} space-y-1`}>
+          {statusDisplay.tips.map((tip, index) => (
+            <p key={index}>• {tip}</p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Transaction {
   id: string;
   transactionId: string;
@@ -148,22 +263,7 @@ export default function AdminPanel() {
 
       <div className="container mx-auto px-4 py-6">
         {/* API Status Alert */}
-        <div className="mb-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <span className="text-amber-600">⚠️</span>
-              <h4 className="font-semibold text-amber-800">Status API Indotel</h4>
-            </div>
-            <p className="text-sm text-amber-700 mb-3">
-              API sudah terkonfigurasi tapi IP server perlu didaftarkan. IP saat ini: <strong>34.74.146.71</strong>
-            </p>
-            <div className="text-xs text-amber-600 space-y-1">
-              <p>• Hubungi provider Indotel untuk mendaftarkan IP tersebut</p>
-              <p>• Sementara transaksi akan diproses manual melalui panel admin ini</p>
-              <p>• Setelah IP terdaftar, transaksi akan otomatis terproses</p>
-            </div>
-          </div>
-        </div>
+        <ApiStatusCard />
 
         {/* Admin Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
