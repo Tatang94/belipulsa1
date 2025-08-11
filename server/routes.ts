@@ -205,11 +205,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Indotel API proxy endpoints
+  // Indotel API integration
   app.post("/api/indotel/inquiry", async (req, res) => {
     try {
-      const indotelUrl = process.env.INDOTEL_URL || 'https://api.indotel.co.id';
-      const indotelPassword = process.env.INDOTEL_PASSWORD || 'default_password';
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(400).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      }
+
+      const requestBody = {
+        mmid: indotelMMID,
+        ...req.body
+      };
       
       const response = await fetch(`${indotelUrl}/api/inquiry`, {
         method: 'POST',
@@ -217,20 +227,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(requestBody),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       res.json(result);
     } catch (error) {
-      res.status(500).json({ message: "Gagal melakukan inquiry" });
+      console.error('Indotel inquiry error:', error);
+      res.status(500).json({ message: "Gagal melakukan inquiry ke server Indotel" });
     }
   });
 
   app.post("/api/indotel/payment", async (req, res) => {
     try {
-      const indotelUrl = process.env.INDOTEL_URL || 'https://api.indotel.co.id';
-      const indotelPassword = process.env.INDOTEL_PASSWORD || 'default_password';
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(400).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      }
+
+      const requestBody = {
+        mmid: indotelMMID,
+        ...req.body
+      };
       
       const response = await fetch(`${indotelUrl}/api/payment`, {
         method: 'POST',
@@ -238,20 +263,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(requestBody),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       res.json(result);
     } catch (error) {
-      res.status(500).json({ message: "Gagal melakukan pembayaran" });
+      console.error('Indotel payment error:', error);
+      res.status(500).json({ message: "Gagal melakukan pembayaran ke server Indotel" });
     }
   });
 
   app.post("/api/indotel/topup", async (req, res) => {
     try {
-      const indotelUrl = process.env.INDOTEL_URL || 'https://api.indotel.co.id';
-      const indotelPassword = process.env.INDOTEL_PASSWORD || 'default_password';
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(400).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      }
+
+      const requestBody = {
+        mmid: indotelMMID,
+        ...req.body
+      };
       
       const response = await fetch(`${indotelUrl}/api/topup`, {
         method: 'POST',
@@ -259,13 +299,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Content-Type': 'application/json',
           'rqid': indotelPassword,
         },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(requestBody),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       res.json(result);
     } catch (error) {
-      res.status(500).json({ message: "Gagal melakukan topup" });
+      console.error('Indotel topup error:', error);
+      res.status(500).json({ message: "Gagal melakukan topup ke server Indotel" });
+    }
+  });
+
+  // Get Indotel product categories
+  app.post("/api/indotel/product-categories", async (req, res) => {
+    try {
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(400).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      }
+
+      const requestBody = {
+        mmid: indotelMMID
+      };
+      
+      const response = await fetch(`${indotelUrl}/api/product-categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'rqid': indotelPassword,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error('Indotel categories error:', error);
+      res.status(500).json({ message: "Gagal mengambil kategori produk dari Indotel" });
+    }
+  });
+
+  // Get Indotel products by category
+  app.post("/api/indotel/products", async (req, res) => {
+    try {
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(400).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      }
+
+      const requestBody = {
+        mmid: indotelMMID,
+        ...req.body
+      };
+      
+      const response = await fetch(`${indotelUrl}/api/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'rqid': indotelPassword,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error('Indotel products error:', error);
+      res.status(500).json({ message: "Gagal mengambil produk dari Indotel" });
+    }
+  });
+
+  // Check Indotel balance
+  app.post("/api/indotel/balance", async (req, res) => {
+    try {
+      const indotelUrl = process.env.INDOTEL_URL;
+      const indotelPassword = process.env.INDOTEL_PASSWORD;
+      const indotelMMID = process.env.INDOTEL_MMID;
+      
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(400).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      }
+
+      const requestBody = {
+        mmid: indotelMMID
+      };
+      
+      const response = await fetch(`${indotelUrl}/api/balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'rqid': indotelPassword,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      res.json(result);
+    } catch (error) {
+      console.error('Indotel balance error:', error);
+      res.status(500).json({ message: "Gagal mengecek saldo Indotel" });
     }
   });
 
