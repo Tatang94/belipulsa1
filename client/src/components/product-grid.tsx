@@ -37,7 +37,14 @@ export default function ProductGrid({
   onProductSelect 
 }: ProductGridProps) {
   const { data: products, isLoading, error } = useQuery<Product[]>({
-    queryKey: ["/api/products", { category: selectedCategory, type: productType }],
+    queryKey: ["/api/products", selectedCategory, productType],
+    queryFn: async () => {
+      const response = await fetch(`/api/products?category=${selectedCategory}&type=${productType}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
     enabled: !!selectedCategory,
     retry: 2,
     retryDelay: 1000,
