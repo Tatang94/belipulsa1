@@ -5,12 +5,8 @@ import { insertTransactionSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import https from "https";
-
-// Create HTTPS agent that accepts self-signed certificates
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false
-});
+// Note: In browser environments, we don't need to configure HTTPS agents
+// The fetch API handles SSL/TLS automatically
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -54,7 +50,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               'rqid': indotelPassword,
             },
             body: JSON.stringify(requestBody),
-            agent: httpsAgent,
           });
 
           if (response.ok) {
@@ -127,7 +122,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               'rqid': indotelPassword,
             },
             body: JSON.stringify(requestBody),
-            agent: httpsAgent,
           });
 
           if (response.ok) {
@@ -316,7 +310,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'rqid': indotelPassword,
               },
               body: JSON.stringify(requestBody),
-              agent: httpsAgent,
             });
 
             const result = await response.json();
@@ -388,7 +381,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
-        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -425,7 +417,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
-        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -462,7 +453,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
-        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -499,7 +489,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
-        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -537,7 +526,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
-        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -574,7 +562,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rqid': indotelPassword,
         },
         body: JSON.stringify(requestBody),
-        agent: httpsAgent,
       });
 
       if (!response.ok) {
@@ -614,7 +601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             'rqid': indotelPassword,
           },
           body: JSON.stringify(requestBody),
-          agent: httpsAgent,
         });
 
         const result = await response.json();
