@@ -147,6 +147,24 @@ export default function AdminPanel() {
       </header>
 
       <div className="container mx-auto px-4 py-6">
+        {/* API Status Alert */}
+        <div className="mb-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="text-amber-600">⚠️</span>
+              <h4 className="font-semibold text-amber-800">Status API Indotel</h4>
+            </div>
+            <p className="text-sm text-amber-700 mb-3">
+              API sudah terkonfigurasi tapi IP server perlu didaftarkan. IP saat ini: <strong>34.74.146.71</strong>
+            </p>
+            <div className="text-xs text-amber-600 space-y-1">
+              <p>• Hubungi provider Indotel untuk mendaftarkan IP tersebut</p>
+              <p>• Sementara transaksi akan diproses manual melalui panel admin ini</p>
+              <p>• Setelah IP terdaftar, transaksi akan otomatis terproses</p>
+            </div>
+          </div>
+        </div>
+
         {/* Admin Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>

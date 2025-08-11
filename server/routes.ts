@@ -178,19 +178,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If approving, we should call Indotel API
       if (status === 'processing') {
-        // TODO: Call Indotel API here
-        // For now, we'll simulate the process
-        const transaction = await storage.updateTransactionStatus(
-          transactionId, 
-          status, 
-          `REF${Date.now()}`
-        );
-        
+        const transaction = await storage.getTransactionByTransactionId(transactionId);
         if (!transaction) {
           return res.status(404).json({ message: "Transaksi tidak ditemukan" });
         }
 
-        res.json(transaction);
+        try {
+          // Call Indotel API for transaction processing
+          const indotelUrl = process.env.INDOTEL_URL;
+          const indotelPassword = process.env.INDOTEL_PASSWORD;
+          const indotelMMID = process.env.INDOTEL_MMID;
+          
+          if (indotelUrl && indotelPassword && indotelMMID) {
+            const requestBody = {
+              mmid: indotelMMID,
+              ref_1: transaction.transactionId,
+              product_code: transaction.productCode,
+              customer_id: transaction.customerId,
+              ...(transaction.periode && { periode: transaction.periode }),
+              ...(transaction.tahun && { tahun: transaction.tahun }),
+              ...(transaction.nominal && { nominal: transaction.nominal.toString() })
+            };
+
+            const response = await fetch(`${indotelUrl}/V1/api/topup`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'rqid': indotelPassword,
+              },
+              body: JSON.stringify(requestBody),
+            });
+
+            const result = await response.json();
+            
+            if (result.status === 'success' || result.code === '00') {
+              // Success
+              const updatedTransaction = await storage.updateTransactionStatus(
+                transactionId, 
+                'success', 
+                result.ref_2 || result.refid || `REF${Date.now()}`
+              );
+              return res.json(updatedTransaction);
+            } else {
+              // API error but still mark as processing
+              console.log('Indotel API response:', result);
+              const updatedTransaction = await storage.updateTransactionStatus(
+                transactionId, 
+                'processing', 
+                `API_ERROR_${Date.now()}`
+              );
+              return res.json(updatedTransaction);
+            }
+          }
+        } catch (error) {
+          console.error('Indotel API error:', error);
+        }
+
+        // Fallback: Mark as processing without API call
+        const updatedTransaction = await storage.updateTransactionStatus(
+          transactionId, 
+          'processing', 
+          `MANUAL_${Date.now()}`
+        );
+        return res.json(updatedTransaction);
       } else {
         const transaction = await storage.updateTransactionStatus(transactionId, status);
         
@@ -221,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/api/inquiry`, {
+      const response = await fetch(`${indotelUrl}/V1/api/inquiry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -257,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/api/payment`, {
+      const response = await fetch(`${indotelUrl}/V1/api/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -293,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/api/topup`, {
+      const response = await fetch(`${indotelUrl}/V1/api/topup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mmid: indotelMMID
       };
       
-      const response = await fetch(`${indotelUrl}/api/product-categories`, {
+      const response = await fetch(`${indotelUrl}/V1/api/product-categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -366,7 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body
       };
       
-      const response = await fetch(`${indotelUrl}/api/products`, {
+      const response = await fetch(`${indotelUrl}/V1/api/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -402,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mmid: indotelMMID
       };
       
-      const response = await fetch(`${indotelUrl}/api/balance`, {
+      const response = await fetch(`${indotelUrl}/V1/api/balance`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

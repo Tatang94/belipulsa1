@@ -39,7 +39,9 @@ Preferred communication style: Simple, everyday language.
 - **Transaction Flow**: Multi-step process including product selection, customer input, and payment proof upload
 - **Transaction Management**: Status tracking (pending, processing, success, failed, rejected)
 - **Admin Dashboard**: Real-time transaction monitoring with status management capabilities
-- **Payment Processing**: Integration with Indotel API for transaction processing
+- **Payment Processing**: Full integration with Indotel API (https://apiindotel.mesinr1.com/V1/)
+- **QRIS Payment**: Manual QRIS payment system with image upload for proof of payment
+- **No Registration Required**: Direct transaction processing without user accounts
 
 ## Design Patterns
 - **Component Composition**: Reusable UI components with consistent design system
@@ -50,8 +52,11 @@ Preferred communication style: Simple, everyday language.
 # External Dependencies
 
 ## Third-party Services
-- **Neon Database**: PostgreSQL hosting service for production database
-- **Indotel API**: External payment processing service for transaction handling
+- **Neon Database**: PostgreSQL hosting service for production database  
+- **Indotel API**: External payment processing service (https://apiindotel.mesinr1.com/V1/)
+  - Endpoints: /topup (prabayar), /inquiry (cek tagihan), /payment (pembayaran)
+  - Authentication: MMID + Password via 'rqid' header
+  - Status: Configured and ready (IP registration may be required for production)
 
 ## Key Libraries
 - **UI Framework**: React with shadcn/ui components and Radix UI primitives
