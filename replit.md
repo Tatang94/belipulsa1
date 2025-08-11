@@ -5,6 +5,7 @@ This is a full-stack web application for digital payment services, built with a 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+Preferred language: Indonesian for communication and documentation.
 
 # System Architecture
 
@@ -54,9 +55,9 @@ Preferred communication style: Simple, everyday language.
 ## Third-party Services
 - **Neon Database**: PostgreSQL hosting service for production database  
 - **Indotel API**: External payment processing service (https://apiindotel.mesinr1.com/V1/)
-  - Endpoints: /topup (prabayar), /inquiry (cek tagihan), /payment (pembayaran)
-  - Authentication: MMID + Password via 'rqid' header
-  - Status: Configured and ready (IP registration may be required for production)
+  - Endpoints: /topup (prabayar), /inquiry (cek tagihan), /payment (pembayaran)  
+  - Authentication: MMID + Password/PIN via 'rqid' header
+  - Status: Configured and ready (uses PIN-based authentication, no IP whitelist required)
 
 ## Key Libraries
 - **UI Framework**: React with shadcn/ui components and Radix UI primitives
