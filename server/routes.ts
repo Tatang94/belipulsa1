@@ -29,53 +29,55 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Get all categories (try Indotel first, fallback to local)
+  // Get all categories (Indotel API only)
   app.get("/api/categories", async (req, res) => {
     try {
-      // Try to get categories from Indotel API first
       const indotelUrl = process.env.INDOTEL_URL;
       const indotelPassword = process.env.INDOTEL_PASSWORD;
       const indotelMMID = process.env.INDOTEL_MMID;
       
-      if (indotelUrl && indotelPassword && indotelMMID) {
-        try {
-          const requestBody = {
-            mmid: indotelMMID
-          };
-          
-          const response = await fetch(`https://apiindotel.mesinr1.com/V1/api/product-categories`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'rqid': indotelPassword,
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.status === 'success' && result.data) {
-              // Transform Indotel categories to our format
-              const transformedCategories = result.data.map((cat: any, index: number) => ({
-                id: `indotel-${index}`,
-                code: cat.category_code || cat.name?.toUpperCase() || `CAT_${index}`,
-                name: cat.name || cat.category_name || 'Unknown',
-                icon: getIconForCategory(cat.name || cat.category_name || ''),
-                description: cat.description || `Produk ${cat.name || 'kategori'}`
-              }));
-              return res.json(transformedCategories);
-            }
-          }
-        } catch (indotelError) {
-          console.log('Indotel categories API error, using fallback:', indotelError);
-        }
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(503).json({ message: "Konfigurasi API Indotel belum lengkap" });
       }
+
+      const requestBody = {
+        mmid: indotelMMID
+      };
       
-      // Fallback to local categories
-      const categories = await storage.getAllCategories();
-      res.json(categories);
+      const response = await fetch(`https://apiindotel.mesinr1.com/V1/api/product-categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'rqid': indotelPassword,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success' && result.data) {
+          // Transform Indotel categories to our format
+          const transformedCategories = result.data.map((cat: any, index: number) => ({
+            id: `indotel-${index}`,
+            code: cat.category_code || cat.name?.toUpperCase() || `CAT_${index}`,
+            name: cat.name || cat.category_name || 'Unknown',
+            icon: getIconForCategory(cat.name || cat.category_name || ''),
+            description: cat.description || `Produk ${cat.name || 'kategori'}`
+          }));
+          return res.json(transformedCategories);
+        } else {
+          return res.status(502).json({ message: "Format data kategori dari API Indotel tidak valid" });
+        }
+      } else {
+        const errorResult = await response.json().catch(() => ({}));
+        return res.status(502).json({ 
+          message: "Gagal mengambil kategori dari API Indotel",
+          error: errorResult.message || `HTTP ${response.status}`
+        });
+      }
     } catch (error) {
-      res.status(500).json({ message: "Gagal mengambil data kategori" });
+      console.error('Categories API error:', error);
+      res.status(502).json({ message: "Tidak dapat terhubung ke server Indotel" });
     }
   });
 
@@ -94,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return 'mobile-alt'; // default icon
   }
 
-  // Get products by category (try Indotel first, fallback to local)
+  // Get products by category (Indotel API only)
   app.get("/api/products", async (req, res) => {
     try {
       const { category, type } = req.query;
@@ -102,70 +104,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Parameter kategori diperlukan" });
       }
       
-      // Try to get products from Indotel API first
       const indotelUrl = process.env.INDOTEL_URL;
       const indotelPassword = process.env.INDOTEL_PASSWORD;
       const indotelMMID = process.env.INDOTEL_MMID;
       
-      if (indotelUrl && indotelPassword && indotelMMID) {
-        try {
-          const requestBody = {
-            mmid: indotelMMID,
-            category: category as string,
-            type: (type as string)?.toUpperCase() || 'PRABAYAR'
-          };
-          
-          const response = await fetch(`https://${indotelUrl}/V1/api/products`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'rqid': indotelPassword,
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.status === 'success' && result.data) {
-              // Transform Indotel products to our format
-              const transformedProducts = result.data.map((prod: any, index: number) => ({
-                id: `indotel-${prod.product_code || index}`,
-                code: prod.product_code || `PROD_${index}`,
-                name: prod.product_name || prod.name || 'Unknown Product',
-                categoryCode: category as string,
-                operator: prod.operator || prod.provider || null,
-                price: parseInt(prod.price || prod.sell_price || '0'),
-                description: prod.description || `${prod.product_name || 'Produk'} - ${prod.operator || ''}`,
-                type: (type as string)?.toUpperCase() || 'PRABAYAR',
-                isActive: prod.status === 'active' || prod.is_active || true
-              }));
-              return res.json(transformedProducts);
-            }
-          }
-        } catch (indotelError) {
-          console.log('Indotel products API error, using fallback:', indotelError);
-        }
+      if (!indotelUrl || !indotelPassword || !indotelMMID) {
+        return res.status(503).json({ message: "Konfigurasi API Indotel belum lengkap" });
       }
+
+      const requestBody = {
+        mmid: indotelMMID,
+        category: category as string,
+        type: (type as string)?.toUpperCase() || 'PRABAYAR'
+      };
       
-      // Fallback to local products
-      const products = await storage.getProductsByCategory(
-        category as string, 
-        type as string
-      );
-      res.json(products);
+      const response = await fetch(`https://${indotelUrl}/V1/api/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'rqid': indotelPassword,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success' && result.data) {
+          // Transform Indotel products to our format
+          const transformedProducts = result.data.map((prod: any, index: number) => ({
+            id: `indotel-${prod.product_code || index}`,
+            code: prod.product_code || `PROD_${index}`,
+            name: prod.product_name || prod.name || 'Unknown Product',
+            categoryCode: category as string,
+            operator: prod.operator || prod.provider || null,
+            price: parseInt(prod.price || prod.sell_price || '0'),
+            description: prod.description || `${prod.product_name || 'Produk'} - ${prod.operator || ''}`,
+            type: (type as string)?.toUpperCase() || 'PRABAYAR',
+            isActive: prod.status === 'active' || prod.is_active || true
+          }));
+          return res.json(transformedProducts);
+        } else {
+          return res.status(502).json({ message: "Format data produk dari API Indotel tidak valid" });
+        }
+      } else {
+        const errorResult = await response.json().catch(() => ({}));
+        return res.status(502).json({ 
+          message: "Gagal mengambil produk dari API Indotel",
+          error: errorResult.message || `HTTP ${response.status}`
+        });
+      }
     } catch (error) {
-      res.status(500).json({ message: "Gagal mengambil data produk" });
+      console.error('Products API error:', error);
+      res.status(502).json({ message: "Tidak dapat terhubung ke server Indotel" });
     }
   });
 
-  // Get product by code
+  // Get product by code (not needed for external API only, but keeping for compatibility)
   app.get("/api/products/:code", async (req, res) => {
     try {
-      const product = await storage.getProductByCode(req.params.code);
-      if (!product) {
-        return res.status(404).json({ message: "Produk tidak ditemukan" });
-      }
-      res.json(product);
+      // Since we only use external API, we don't have individual product lookup
+      return res.status(404).json({ message: "Gunakan endpoint /api/products dengan parameter kategori" });
     } catch (error) {
       res.status(500).json({ message: "Gagal mengambil data produk" });
     }

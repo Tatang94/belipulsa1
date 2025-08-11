@@ -25,9 +25,10 @@ Preferred language: Indonesian for communication and documentation.
 - **API Design**: RESTful API with JSON responses and proper error handling
 
 ## Data Storage Solutions
-- **Primary Database**: PostgreSQL hosted on Neon Database
+- **Primary Database**: PostgreSQL hosted on Neon Database (for transactions only)
 - **ORM**: Drizzle ORM with schema-first approach and migration support
-- **Schema Design**: Three main entities - transactions, categories, and products
+- **Schema Design**: Transaction storage only - categories and products from external API
+- **External API**: All product and category data sourced from Indotel API
 - **File Storage**: Local file system for uploaded payment proofs (configurable for cloud storage)
 
 ## Authentication and Authorization
@@ -36,13 +37,14 @@ Preferred language: Indonesian for communication and documentation.
 - **Admin Access**: Simple admin panel for transaction monitoring without complex role-based access
 
 ## Core Features
-- **Product Catalog**: Category-based product browsing with support for prepaid/postpaid services
+- **External API Only**: All product and category data sourced exclusively from Indotel API
 - **Transaction Flow**: Multi-step process including product selection, customer input, and payment proof upload
 - **Transaction Management**: Status tracking (pending, processing, success, failed, rejected)
 - **Admin Dashboard**: Real-time transaction monitoring with status management capabilities
 - **Payment Processing**: Full integration with Indotel API (https://apiindotel.mesinr1.com/V1/)
 - **QRIS Payment**: Manual QRIS payment system with image upload for proof of payment
 - **No Registration Required**: Direct transaction processing without user accounts
+- **No Fallback Data**: Application depends entirely on external API availability
 
 ## Design Patterns
 - **Component Composition**: Reusable UI components with consistent design system

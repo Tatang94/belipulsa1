@@ -36,9 +36,11 @@ export default function ProductGrid({
   onProductTypeChange, 
   onProductSelect 
 }: ProductGridProps) {
-  const { data: products, isLoading } = useQuery<Product[]>({
+  const { data: products, isLoading, error } = useQuery<Product[]>({
     queryKey: ["/api/products", { category: selectedCategory, type: productType }],
     enabled: !!selectedCategory,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (!selectedCategory) {
@@ -51,8 +53,25 @@ export default function ProductGrid({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-col justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+        <p className="text-neutral-light">Mengambil data produk dari API Indotel...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Koneksi API Bermasalah</h3>
+          <p className="text-red-600 mb-4">
+            Tidak dapat mengambil produk {selectedCategory} dari server Indotel.
+          </p>
+          <p className="text-sm text-red-500">
+            Silakan coba pilih kategori lain atau refresh halaman.
+          </p>
+        </div>
       </div>
     );
   }
@@ -60,7 +79,12 @@ export default function ProductGrid({
   if (!products?.length) {
     return (
       <div className="text-center py-8">
-        <p className="text-neutral-light">Tidak ada produk tersedia untuk kategori ini</p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Produk Kosong</h3>
+          <p className="text-yellow-600">
+            Tidak ada produk {productType.toLowerCase()} tersedia untuk kategori {selectedCategory}.
+          </p>
+        </div>
       </div>
     );
   }

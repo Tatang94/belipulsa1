@@ -25,14 +25,33 @@ const iconMap: Record<string, string> = {
 };
 
 export default function CategoryGrid({ selectedCategory, onCategorySelect }: CategoryGridProps) {
-  const { data: categories, isLoading } = useQuery<Category[]>({
+  const { data: categories, isLoading, error } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-col justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+        <p className="text-neutral-light">Mengambil data kategori dari API Indotel...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Koneksi API Bermasalah</h3>
+          <p className="text-red-600 mb-4">
+            Tidak dapat terhubung ke server Indotel untuk mengambil data kategori produk.
+          </p>
+          <p className="text-sm text-red-500">
+            Silakan coba refresh halaman atau hubungi administrator jika masalah berlanjut.
+          </p>
+        </div>
       </div>
     );
   }
@@ -40,7 +59,10 @@ export default function CategoryGrid({ selectedCategory, onCategorySelect }: Cat
   if (!categories?.length) {
     return (
       <div className="text-center py-8">
-        <p className="text-neutral-light">Tidak ada kategori tersedia</p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Kategori Kosong</h3>
+          <p className="text-yellow-600">Tidak ada kategori produk yang tersedia saat ini.</p>
+        </div>
       </div>
     );
   }
