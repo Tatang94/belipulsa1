@@ -252,7 +252,7 @@ export function setupRoutes(app: Application): void {
   app.get("/api/transactions/:transactionId", async (req, res) => {
     try {
       const { transactionId } = req.params;
-      const transaction = await storage.getTransactionById(transactionId);
+      const transaction = await storage.getTransactionByTransactionId(transactionId);
       
       if (!transaction) {
         return res.status(404).json({ message: "Transaksi tidak ditemukan" });
