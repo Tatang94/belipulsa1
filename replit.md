@@ -6,6 +6,7 @@ This is a full-stack web application for digital payment services, built with a 
 
 Preferred communication style: Simple, everyday language.
 Preferred language: Indonesian for communication and documentation.
+Product Display: Show product codes prominently on all UI components for easy identification.
 
 # System Architecture
 
@@ -37,15 +38,14 @@ Preferred language: Indonesian for communication and documentation.
 - **Admin Access**: Simple admin panel for transaction monitoring without complex role-based access
 
 ## Core Features
-- **API Integration**: Terintegrasi penuh dengan Indotel API untuk semua endpoint yang diperlukan
-- **Transaction Flow**: Multi-step process including product selection, customer input, dan payment processing
-- **Transaction Management**: Status tracking (pending, processing, success, failed, rejected) dengan sinkronisasi real-time
-- **Admin Dashboard**: Real-time transaction monitoring dengan status management capabilities
-- **Payment Processing**: Full integration dengan API Indotel untuk prabayar dan pascabayar
-- **QRIS Payment**: Manual QRIS payment system dengan image upload untuk proof of payment
-- **Webhook Support**: Callback handler untuk update status dari Indotel secara otomatis
-- **No Registration Required**: Direct transaction processing tanpa perlu akun pengguna
-- **Fallback Support**: Data fallback untuk testing saat API tidak tersedia atau belum dikonfigurasi
+- **Real Data Integration**: Menggunakan data real dari kredensial Indotel C71283 tanpa fallback data demo
+- **Product Categories**: Operator real (Telkomsel, Indosat, XL, Three, Smartfren, PLN, PDAM, BPJS, Game)
+- **Product Code Display**: Kode produk ditampilkan pada semua UI components dengan badge styling
+- **Transaction Flow**: Direct API integration untuk prabayar (TOPUP) dan pascabayar (CHECK BILL + PAY BILL)
+- **Real Pricing**: Harga pasar actual berdasarkan data kredensial yang valid
+- **Error Handling**: Proper error messages saat API tidak tersedia dengan saran troubleshooting
+- **Product Identification**: Setiap produk menampilkan kode unik (T5, I10, X25, PLN50, dll)
+- **API Authentication**: Menggunakan environment variables INDOTEL_MMID, INDOTEL_PASSWORD, INDOTEL_URL
 
 ## Design Patterns
 - **Component Composition**: Reusable UI components with consistent design system
