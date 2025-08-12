@@ -129,7 +129,12 @@ export default function PaymentModal({
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-neutral-light">Produk:</span>
-                  <span className="text-neutral">{product?.name}</span>
+                  <div className="text-right">
+                    <div className="text-neutral">{product?.name}</div>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
+                      {product?.code}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-light">Nomor:</span>

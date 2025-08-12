@@ -108,9 +108,14 @@ export default function TransactionModal({
                   </div>
                   <div>
                     <h4 className="font-semibold text-neutral">{product.name}</h4>
-                    {product.operator && (
-                      <p className="text-sm text-neutral-light">{product.operator}</p>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
+                        {product.code}
+                      </span>
+                      {product.operator && (
+                        <p className="text-sm text-neutral-light">{product.operator}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
