@@ -42,10 +42,11 @@ export function setupRoutes(app: Application): void {
   // Get all categories - menggunakan POST PRODUCT CATEGORY dari API Indotel
   app.get("/api/categories", async (req, res) => {
     try {
-      const indotelAPI = createIndotelAPI();
-      
-      // Coba ambil dari API Indotel terlebih dahulu
+      // Coba buat instance API Indotel
       try {
+        const indotelAPI = createIndotelAPI();
+        
+        // Coba ambil dari API Indotel
         const response = await indotelAPI.getCategories();
         if (response.status === 'success' && response.data) {
           return res.json(response.data.map(cat => ({
@@ -57,23 +58,39 @@ export function setupRoutes(app: Application): void {
           })));
         }
       } catch (apiError) {
-        console.log('API Indotel belum dikonfigurasi, menggunakan kategori default');
+        // Jika error adalah konfigurasi yang tidak lengkap, gunakan fallback
+        if (apiError instanceof Error && apiError.message === 'API_NOT_CONFIGURED') {
+          console.log('API Indotel belum dikonfigurasi, menggunakan kategori default');
+        } else {
+          console.log('Error koneksi API Indotel, menggunakan kategori default:', apiError);
+        }
       }
 
-      // Fallback ke kategori default jika API tidak tersedia
+      // Fallback ke kategori default jika API tidak tersedia atau belum dikonfigurasi
       const defaultCategories = [
-        { id: 'indotel-1', code: 'PULSA', name: 'Pulsa', icon: 'mobile-alt', description: 'Pulsa semua operator' },
-        { id: 'indotel-2', code: 'DATA', name: 'Paket Data', icon: 'wifi', description: 'Paket data internet' },
-        { id: 'indotel-3', code: 'PLN', name: 'PLN', icon: 'bolt', description: 'Token listrik dan tagihan PLN' },
-        { id: 'indotel-4', code: 'PDAM', name: 'PDAM', icon: 'tint', description: 'Tagihan air PDAM' },
-        { id: 'indotel-5', code: 'BPJS', name: 'BPJS', icon: 'heart', description: 'BPJS Kesehatan' },
-        { id: 'indotel-6', code: 'GAME', name: 'Voucher Game', icon: 'gamepad', description: 'Voucher gaming' },
+        { id: 'indotel-1', code: 'PULSA', name: 'Pulsa', icon: 'mobile-alt', description: 'Pulsa semua operator (Demo)' },
+        { id: 'indotel-2', code: 'DATA', name: 'Paket Data', icon: 'wifi', description: 'Paket data internet (Demo)' },
+        { id: 'indotel-3', code: 'PLN', name: 'PLN', icon: 'bolt', description: 'Token listrik dan tagihan PLN (Demo)' },
+        { id: 'indotel-4', code: 'PDAM', name: 'PDAM', icon: 'tint', description: 'Tagihan air PDAM (Demo)' },
+        { id: 'indotel-5', code: 'BPJS', name: 'BPJS', icon: 'heart', description: 'BPJS Kesehatan (Demo)' },
+        { id: 'indotel-6', code: 'GAME', name: 'Voucher Game', icon: 'gamepad', description: 'Voucher gaming (Demo)' },
       ];
       
       return res.json(defaultCategories);
     } catch (error) {
       console.error('Categories API error:', error);
-      res.status(502).json({ message: "Tidak dapat terhubung ke server Indotel" });
+      
+      // Tetap berikan response dengan data demo
+      const defaultCategories = [
+        { id: 'indotel-1', code: 'PULSA', name: 'Pulsa', icon: 'mobile-alt', description: 'Pulsa semua operator (Demo)' },
+        { id: 'indotel-2', code: 'DATA', name: 'Paket Data', icon: 'wifi', description: 'Paket data internet (Demo)' },
+        { id: 'indotel-3', code: 'PLN', name: 'PLN', icon: 'bolt', description: 'Token listrik dan tagihan PLN (Demo)' },
+        { id: 'indotel-4', code: 'PDAM', name: 'PDAM', icon: 'tint', description: 'Tagihan air PDAM (Demo)' },
+        { id: 'indotel-5', code: 'BPJS', name: 'BPJS', icon: 'heart', description: 'BPJS Kesehatan (Demo)' },
+        { id: 'indotel-6', code: 'GAME', name: 'Voucher Game', icon: 'gamepad', description: 'Voucher gaming (Demo)' },
+      ];
+      
+      return res.json(defaultCategories);
     }
   });
 
@@ -108,7 +125,11 @@ export function setupRoutes(app: Application): void {
           return res.json(filteredProducts);
         }
       } catch (apiError) {
-        console.log('API Indotel belum dikonfigurasi, menggunakan produk default');
+        if (apiError instanceof Error && apiError.message === 'API_NOT_CONFIGURED') {
+          console.log('API Indotel belum dikonfigurasi, menggunakan produk default');
+        } else {
+          console.log('Error koneksi API Indotel, menggunakan produk default:', apiError);
+        }
       }
 
       // Fallback ke produk default jika API tidak tersedia
@@ -170,7 +191,7 @@ export function setupRoutes(app: Application): void {
       ).map(p => ({
         ...p,
         isActive: true,
-        description: `${p.name} - Data fallback (API belum dikonfigurasi)`
+        description: `${p.name} - Demo Mode (API belum dikonfigurasi)`
       }));
       
       return res.json(filteredProducts);

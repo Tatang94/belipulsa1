@@ -149,8 +149,9 @@ export function createIndotelAPI(): IndotelAPI {
     password: process.env.INDOTEL_PASSWORD || '',
   };
 
+  // Jika konfigurasi tidak lengkap, kembalikan error yang lebih spesifik
   if (!config.mmid || !config.password) {
-    throw new Error('Konfigurasi INDOTEL_MMID dan INDOTEL_PASSWORD diperlukan');
+    throw new Error('API_NOT_CONFIGURED');
   }
 
   return new IndotelAPI(config);
