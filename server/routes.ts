@@ -2,6 +2,7 @@ import { Application } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertTransactionSchema } from "../shared/schema";
+import { createIndotelAPI } from "./indotel-api";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -38,18 +39,28 @@ const upload = multer({
 });
 
 export function setupRoutes(app: Application): void {
-  // Get all categories (berdasarkan dokumentasi API Indotel)
+  // Get all categories - menggunakan POST PRODUCT CATEGORY dari API Indotel
   app.get("/api/categories", async (req, res) => {
     try {
-      const indotelUrl = process.env.INDOTEL_URL;
-      const indotelPassword = process.env.INDOTEL_PASSWORD;
-      const indotelMMID = process.env.INDOTEL_MMID;
+      const indotelAPI = createIndotelAPI();
       
-      if (!indotelUrl || !indotelPassword || !indotelMMID) {
-        return res.status(503).json({ message: "Konfigurasi API Indotel belum lengkap" });
+      // Coba ambil dari API Indotel terlebih dahulu
+      try {
+        const response = await indotelAPI.getCategories();
+        if (response.status === 'success' && response.data) {
+          return res.json(response.data.map(cat => ({
+            id: `indotel-${cat.code}`,
+            code: cat.code,
+            name: cat.name,
+            icon: cat.icon || getIconForCategory(cat.name),
+            description: cat.description || `${cat.name} melalui API Indotel`
+          })));
+        }
+      } catch (apiError) {
+        console.log('API Indotel belum dikonfigurasi, menggunakan kategori default');
       }
 
-      // Berdasarkan dokumentasi API Indotel, menampilkan kategori produk yang tersedia
+      // Fallback ke kategori default jika API tidak tersedia
       const defaultCategories = [
         { id: 'indotel-1', code: 'PULSA', name: 'Pulsa', icon: 'mobile-alt', description: 'Pulsa semua operator' },
         { id: 'indotel-2', code: 'DATA', name: 'Paket Data', icon: 'wifi', description: 'Paket data internet' },
@@ -66,23 +77,41 @@ export function setupRoutes(app: Application): void {
     }
   });
 
-  // Get products by category (berdasarkan dokumentasi API Indotel)
+  // Get products by category - menggunakan POST LIST PRODUCT dari API Indotel
   app.get("/api/products", async (req, res) => {
     try {
       const { category, type } = req.query;
       if (!category) {
         return res.status(400).json({ message: "Parameter kategori diperlukan" });
       }
-      
-      const indotelUrl = process.env.INDOTEL_URL;
-      const indotelPassword = process.env.INDOTEL_PASSWORD;
-      const indotelMMID = process.env.INDOTEL_MMID;
-      
-      if (!indotelUrl || !indotelPassword || !indotelMMID) {
-        return res.status(503).json({ message: "Konfigurasi API Indotel belum lengkap" });
+
+      try {
+        const indotelAPI = createIndotelAPI();
+        
+        // Coba ambil dari API Indotel terlebih dahulu menggunakan POST LIST PRODUCT
+        const response = await indotelAPI.getProducts(category as string);
+        if (response.status === 'success' && response.data) {
+          const filteredProducts = response.data
+            .filter(p => !type || p.type.toUpperCase() === (type as string)?.toUpperCase())
+            .map(p => ({
+              id: `indotel-${p.code}`,
+              code: p.code,
+              name: p.name,
+              categoryCode: p.category,
+              operator: p.operator,
+              price: p.price,
+              type: p.type,
+              isActive: true,
+              description: p.description || `${p.name} melalui API Indotel`
+            }));
+          
+          return res.json(filteredProducts);
+        }
+      } catch (apiError) {
+        console.log('API Indotel belum dikonfigurasi, menggunakan produk default');
       }
 
-      // Berdasarkan dokumentasi API Indotel, menampilkan produk berdasarkan kategori
+      // Fallback ke produk default jika API tidak tersedia
       let products: any[] = [];
       
       switch (category?.toString().toUpperCase()) {
@@ -137,17 +166,83 @@ export function setupRoutes(app: Application): void {
       }
       
       const filteredProducts = products.filter(p => 
-        p.type.toUpperCase() === (type as string)?.toUpperCase()
+        !type || p.type.toUpperCase() === (type as string)?.toUpperCase()
       ).map(p => ({
         ...p,
         isActive: true,
-        description: `${p.name} - Melalui API Indotel (format sesuai dokumentasi)`
+        description: `${p.name} - Data fallback (API belum dikonfigurasi)`
       }));
       
       return res.json(filteredProducts);
     } catch (error) {
       console.error('Products API error:', error);
       res.status(502).json({ message: "Tidak dapat terhubung ke server Indotel" });
+    }
+  });
+
+  // POST CEK TAGIHAN / CHECK BILL - untuk produk pascabayar
+  app.post("/api/check-bill", async (req, res) => {
+    try {
+      const { customer_number, product_code } = req.body;
+      
+      if (!customer_number || !product_code) {
+        return res.status(400).json({ message: "Nomor pelanggan dan kode produk diperlukan" });
+      }
+
+      const indotelAPI = createIndotelAPI();
+      const response = await indotelAPI.checkBill({ customer_number, product_code });
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Check bill API error:', error);
+      res.status(503).json({ message: "Tidak dapat mengecek tagihan. Pastikan konfigurasi API Indotel sudah benar." });
+    }
+  });
+
+  // POST CEK HARGA - cek harga produk
+  app.post("/api/check-price", async (req, res) => {
+    try {
+      const { product_code } = req.body;
+      
+      if (!product_code) {
+        return res.status(400).json({ message: "Kode produk diperlukan" });
+      }
+
+      const indotelAPI = createIndotelAPI();
+      const response = await indotelAPI.checkPrice(product_code);
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Check price API error:', error);
+      res.status(503).json({ message: "Tidak dapat mengecek harga. Pastikan konfigurasi API Indotel sudah benar." });
+    }
+  });
+
+  // POST CEK SALDO / CHECK BALANCE
+  app.get("/api/balance", async (req, res) => {
+    try {
+      const indotelAPI = createIndotelAPI();
+      const response = await indotelAPI.checkBalance();
+      
+      res.json(response);
+    } catch (error) {
+      console.error('Check balance API error:', error);
+      res.status(503).json({ message: "Tidak dapat mengecek saldo. Pastikan konfigurasi API Indotel sudah benar." });
+    }
+  });
+
+  // POST HISTORY - riwayat transaksi dari Indotel
+  app.get("/api/indotel-history", async (req, res) => {
+    try {
+      const { start_date, end_date } = req.query;
+      
+      const indotelAPI = createIndotelAPI();
+      const response = await indotelAPI.getHistory(start_date as string, end_date as string);
+      
+      res.json(response);
+    } catch (error) {
+      console.error('History API error:', error);
+      res.status(503).json({ message: "Tidak dapat mengambil riwayat transaksi. Pastikan konfigurasi API Indotel sudah benar." });
     }
   });
 
@@ -187,6 +282,207 @@ export function setupRoutes(app: Application): void {
       } else {
         res.status(500).json({ message: "Gagal membuat transaksi" });
       }
+    }
+  });
+
+  // POST TOPUP - proses pembelian prabayar melalui API Indotel
+  app.post("/api/topup", async (req, res) => {
+    try {
+      const { transactionId } = req.body;
+      
+      if (!transactionId) {
+        return res.status(400).json({ message: "Transaction ID diperlukan" });
+      }
+
+      // Ambil data transaksi
+      const transaction = await storage.getTransactionByTransactionId(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaksi tidak ditemukan" });
+      }
+
+      if (transaction.status !== 'pending') {
+        return res.status(400).json({ message: "Transaksi tidak dalam status pending" });
+      }
+
+      try {
+        const indotelAPI = createIndotelAPI();
+        
+        // Proses topup menggunakan POST TOPUP dari API Indotel
+        const topupResponse = await indotelAPI.topup({
+          customer_number: transaction.customerNumber,
+          product_code: transaction.productCode
+        });
+
+        // Update status dan Indotel reference ID
+        await storage.updateTransactionStatus(
+          transactionId, 
+          'processing',
+          topupResponse.data?.transaction_id
+        );
+
+        res.json({
+          message: "Transaksi berhasil diproses",
+          indotelResponse: topupResponse,
+          status: 'processing'
+        });
+      } catch (apiError) {
+        console.error('Indotel API Error:', apiError);
+        
+        // Update status ke failed jika API error
+        await storage.updateTransactionStatus(transactionId, 'failed');
+        
+        res.status(503).json({ 
+          message: "Gagal memproses transaksi melalui API Indotel",
+          error: apiError instanceof Error ? apiError.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Topup API error:', error);
+      res.status(500).json({ message: "Gagal memproses topup" });
+    }
+  });
+
+  // POST BAYAR TAGIHAN / PAY BILL - proses pembayaran pascabayar
+  app.post("/api/pay-bill", async (req, res) => {
+    try {
+      const { transactionId, ref_id } = req.body;
+      
+      if (!transactionId || !ref_id) {
+        return res.status(400).json({ message: "Transaction ID dan Reference ID diperlukan" });
+      }
+
+      // Ambil data transaksi
+      const transaction = await storage.getTransactionByTransactionId(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaksi tidak ditemukan" });
+      }
+
+      if (transaction.status !== 'pending') {
+        return res.status(400).json({ message: "Transaksi tidak dalam status pending" });
+      }
+
+      try {
+        const indotelAPI = createIndotelAPI();
+        
+        // Proses pembayaran menggunakan POST BAYAR TAGIHAN dari API Indotel
+        const payResponse = await indotelAPI.payBill({
+          customer_number: transaction.customerNumber,
+          product_code: transaction.productCode,
+          ref_id: ref_id
+        });
+
+        // Update status dan Indotel reference ID
+        await storage.updateTransactionStatus(
+          transactionId, 
+          'processing',
+          payResponse.data?.transaction_id || ref_id
+        );
+
+        res.json({
+          message: "Pembayaran tagihan berhasil diproses",
+          indotelResponse: payResponse,
+          status: 'processing'
+        });
+      } catch (apiError) {
+        console.error('Indotel Pay Bill API Error:', apiError);
+        
+        // Update status ke failed jika API error
+        await storage.updateTransactionStatus(transactionId, 'failed');
+        
+        res.status(503).json({ 
+          message: "Gagal memproses pembayaran melalui API Indotel",
+          error: apiError instanceof Error ? apiError.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Pay bill API error:', error);
+      res.status(500).json({ message: "Gagal memproses pembayaran tagihan" });
+    }
+  });
+
+  // POST STATUS - cek status transaksi dari Indotel
+  app.post("/api/transaction-status", async (req, res) => {
+    try {
+      const { transactionId } = req.body;
+      
+      if (!transactionId) {
+        return res.status(400).json({ message: "Transaction ID diperlukan" });
+      }
+
+      // Ambil data transaksi lokal
+      const localTransaction = await storage.getTransactionByTransactionId(transactionId);
+      if (!localTransaction || !localTransaction.indotelRefId) {
+        return res.status(404).json({ message: "Transaksi tidak ditemukan atau belum diproses" });
+      }
+
+      try {
+        const indotelAPI = createIndotelAPI();
+        
+        // Cek status dari API Indotel menggunakan POST STATUS
+        const statusResponse = await indotelAPI.getTransactionStatus(localTransaction.indotelRefId);
+
+        // Update status lokal berdasarkan response dari Indotel
+        if (statusResponse.data?.status) {
+          await storage.updateTransactionStatus(transactionId, statusResponse.data.status);
+        }
+
+        res.json({
+          localStatus: localTransaction.status,
+          indotelResponse: statusResponse
+        });
+      } catch (apiError) {
+        console.error('Indotel Status API Error:', apiError);
+        res.status(503).json({ 
+          message: "Gagal mengecek status dari API Indotel",
+          localStatus: localTransaction.status,
+          error: apiError instanceof Error ? apiError.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Transaction status API error:', error);
+      res.status(500).json({ message: "Gagal mengecek status transaksi" });
+    }
+  });
+
+  // POST CALLBACK - webhook untuk menerima update status dari Indotel
+  app.post("/api/callback", async (req, res) => {
+    try {
+      const callbackData = req.body;
+      
+      // Log callback untuk debugging
+      console.log('Received Indotel callback:', JSON.stringify(callbackData, null, 2));
+
+      // Validasi callback data
+      if (!callbackData.transaction_id || !callbackData.status) {
+        return res.status(400).json({ message: "Callback data tidak valid" });
+      }
+
+      // Cari transaksi berdasarkan Indotel reference ID
+      const transactions = await storage.getAllTransactions();
+      const transaction = transactions.find(t => t.indotelRefId === callbackData.transaction_id);
+
+      if (!transaction) {
+        console.log(`Transaksi dengan Indotel ref ID ${callbackData.transaction_id} tidak ditemukan`);
+        return res.status(404).json({ message: "Transaksi tidak ditemukan" });
+      }
+
+      // Update status berdasarkan callback
+      await storage.updateTransactionStatus(
+        transaction.transactionId, 
+        callbackData.status,
+        callbackData.transaction_id
+      );
+
+      console.log(`Status transaksi ${transaction.transactionId} diupdate menjadi ${callbackData.status}`);
+
+      res.json({ 
+        message: "Callback berhasil diproses",
+        transactionId: transaction.transactionId,
+        newStatus: callbackData.status
+      });
+    } catch (error) {
+      console.error('Callback API error:', error);
+      res.status(500).json({ message: "Gagal memproses callback" });
     }
   });
 

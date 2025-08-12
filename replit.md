@@ -37,14 +37,15 @@ Preferred language: Indonesian for communication and documentation.
 - **Admin Access**: Simple admin panel for transaction monitoring without complex role-based access
 
 ## Core Features
-- **External API Only**: All product and category data sourced exclusively from Indotel API
-- **Transaction Flow**: Multi-step process including product selection, customer input, and payment proof upload
-- **Transaction Management**: Status tracking (pending, processing, success, failed, rejected)
-- **Admin Dashboard**: Real-time transaction monitoring with status management capabilities
-- **Payment Processing**: Full integration with Indotel API (https://apiindotel.mesinr1.com/V1/)
-- **QRIS Payment**: Manual QRIS payment system with image upload for proof of payment
-- **No Registration Required**: Direct transaction processing without user accounts
-- **No Fallback Data**: Application depends entirely on external API availability
+- **API Integration**: Terintegrasi penuh dengan Indotel API untuk semua endpoint yang diperlukan
+- **Transaction Flow**: Multi-step process including product selection, customer input, dan payment processing
+- **Transaction Management**: Status tracking (pending, processing, success, failed, rejected) dengan sinkronisasi real-time
+- **Admin Dashboard**: Real-time transaction monitoring dengan status management capabilities
+- **Payment Processing**: Full integration dengan API Indotel untuk prabayar dan pascabayar
+- **QRIS Payment**: Manual QRIS payment system dengan image upload untuk proof of payment
+- **Webhook Support**: Callback handler untuk update status dari Indotel secara otomatis
+- **No Registration Required**: Direct transaction processing tanpa perlu akun pengguna
+- **Fallback Support**: Data fallback untuk testing saat API tidak tersedia atau belum dikonfigurasi
 
 ## Design Patterns
 - **Component Composition**: Reusable UI components with consistent design system
@@ -57,9 +58,18 @@ Preferred language: Indonesian for communication and documentation.
 ## Third-party Services
 - **Neon Database**: PostgreSQL hosting service for production database  
 - **Indotel API**: External payment processing service (https://apiindotel.mesinr1.com/V1/)
-  - Endpoints: /topup (prabayar), /inquiry (cek tagihan), /payment (pembayaran)  
+  - **POST TOPUP**: Pembelian pulsa/data prabayar  
+  - **POST STATUS**: Cek status transaksi
+  - **POST CEK TAGIHAN / CHECK BILL**: Cek tagihan pascabayar
+  - **POST BAYAR TAGIHAN / PAY BILL**: Pembayaran tagihan pascabayar
+  - **POST PRODUCT CATEGORY**: Daftar kategori produk
+  - **POST LIST PRODUCT**: Daftar produk berdasarkan kategori
+  - **POST CEK HARGA**: Cek harga produk
+  - **POST HISTORY**: Riwayat transaksi
+  - **POST CEK SALDO / CHECK BALANCE**: Cek saldo akun
+  - **POST CALLBACK**: Webhook untuk update status transaksi
   - Authentication: MMID + Password/PIN via 'rqid' header
-  - Status: Configured and ready (uses PIN-based authentication, no IP whitelist required)
+  - Status: Terintegrasi penuh dengan fallback data jika API tidak tersedia
 
 ## Key Libraries
 - **UI Framework**: React with shadcn/ui components and Radix UI primitives
