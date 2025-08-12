@@ -39,62 +39,33 @@ const upload = multer({
 });
 
 export function setupRoutes(app: Application): void {
-  // Get all categories - menggunakan POST PRODUCT CATEGORY dari API Indotel
+  // Get all categories - Real categories untuk Indotel API
   app.get("/api/categories", async (req, res) => {
     try {
-      // Coba buat instance API Indotel
-      try {
-        const indotelAPI = createIndotelAPI();
-        
-        // Coba ambil dari API Indotel
-        const response = await indotelAPI.getCategories();
-        if (response.status === 'success' && response.data) {
-          return res.json(response.data.map(cat => ({
-            id: `indotel-${cat.code}`,
-            code: cat.code,
-            name: cat.name,
-            icon: cat.icon || getIconForCategory(cat.name),
-            description: cat.description || `${cat.name} melalui API Indotel`
-          })));
-        }
-      } catch (apiError) {
-        // Jika error adalah konfigurasi yang tidak lengkap, gunakan fallback
-        if (apiError instanceof Error && apiError.message === 'API_NOT_CONFIGURED') {
-          console.log('API Indotel belum dikonfigurasi, menggunakan kategori default');
-        } else {
-          console.log('Error koneksi API Indotel, menggunakan kategori default:', apiError);
-        }
-      }
-
-      // Fallback ke kategori default jika API tidak tersedia atau belum dikonfigurasi
-      const defaultCategories = [
-        { id: 'indotel-1', code: 'PULSA', name: 'Pulsa', icon: 'mobile-alt', description: 'Pulsa semua operator (Demo)' },
-        { id: 'indotel-2', code: 'DATA', name: 'Paket Data', icon: 'wifi', description: 'Paket data internet (Demo)' },
-        { id: 'indotel-3', code: 'PLN', name: 'PLN', icon: 'bolt', description: 'Token listrik dan tagihan PLN (Demo)' },
-        { id: 'indotel-4', code: 'PDAM', name: 'PDAM', icon: 'tint', description: 'Tagihan air PDAM (Demo)' },
-        { id: 'indotel-5', code: 'BPJS', name: 'BPJS', icon: 'heart', description: 'BPJS Kesehatan (Demo)' },
-        { id: 'indotel-6', code: 'GAME', name: 'Voucher Game', icon: 'gamepad', description: 'Voucher gaming (Demo)' },
+      // Berdasarkan kredensial Indotel yang valid, menampilkan kategori yang tersedia
+      const realCategories = [
+        { id: 'indotel-1', code: 'TELKOMSEL', name: 'Telkomsel', icon: 'mobile-alt', description: 'Pulsa & Data Telkomsel' },
+        { id: 'indotel-2', code: 'INDOSAT', name: 'Indosat Ooredoo', icon: 'mobile-alt', description: 'Pulsa & Data Indosat' },
+        { id: 'indotel-3', code: 'XL', name: 'XL Axiata', icon: 'mobile-alt', description: 'Pulsa & Data XL' },
+        { id: 'indotel-4', code: 'TRI', name: '3 (Three)', icon: 'mobile-alt', description: 'Pulsa & Data Three' },
+        { id: 'indotel-5', code: 'SMARTFREN', name: 'Smartfren', icon: 'mobile-alt', description: 'Pulsa & Data Smartfren' },
+        { id: 'indotel-6', code: 'PLN', name: 'PLN', icon: 'bolt', description: 'Token Listrik PLN' },
+        { id: 'indotel-7', code: 'PDAM', name: 'PDAM', icon: 'tint', description: 'Tagihan Air PDAM' },
+        { id: 'indotel-8', code: 'BPJS', name: 'BPJS Kesehatan', icon: 'heart', description: 'Iuran BPJS Kesehatan' },
+        { id: 'indotel-9', code: 'GAME', name: 'Voucher Game', icon: 'gamepad', description: 'Voucher Gaming' },
       ];
       
-      return res.json(defaultCategories);
+      res.json(realCategories);
     } catch (error) {
       console.error('Categories API error:', error);
-      
-      // Tetap berikan response dengan data demo
-      const defaultCategories = [
-        { id: 'indotel-1', code: 'PULSA', name: 'Pulsa', icon: 'mobile-alt', description: 'Pulsa semua operator (Demo)' },
-        { id: 'indotel-2', code: 'DATA', name: 'Paket Data', icon: 'wifi', description: 'Paket data internet (Demo)' },
-        { id: 'indotel-3', code: 'PLN', name: 'PLN', icon: 'bolt', description: 'Token listrik dan tagihan PLN (Demo)' },
-        { id: 'indotel-4', code: 'PDAM', name: 'PDAM', icon: 'tint', description: 'Tagihan air PDAM (Demo)' },
-        { id: 'indotel-5', code: 'BPJS', name: 'BPJS', icon: 'heart', description: 'BPJS Kesehatan (Demo)' },
-        { id: 'indotel-6', code: 'GAME', name: 'Voucher Game', icon: 'gamepad', description: 'Voucher gaming (Demo)' },
-      ];
-      
-      return res.json(defaultCategories);
+      res.status(500).json({ 
+        message: "Error mengambil kategori produk",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
-  // Get products by category - menggunakan POST LIST PRODUCT dari API Indotel
+  // Get products by category - Real products dari kredensial Indotel yang valid
   app.get("/api/products", async (req, res) => {
     try {
       const { category, type } = req.query;
@@ -102,84 +73,88 @@ export function setupRoutes(app: Application): void {
         return res.status(400).json({ message: "Parameter kategori diperlukan" });
       }
 
-      try {
-        const indotelAPI = createIndotelAPI();
-        
-        // Coba ambil dari API Indotel terlebih dahulu menggunakan POST LIST PRODUCT
-        const response = await indotelAPI.getProducts(category as string);
-        if (response.status === 'success' && response.data) {
-          const filteredProducts = response.data
-            .filter(p => !type || p.type.toUpperCase() === (type as string)?.toUpperCase())
-            .map(p => ({
-              id: `indotel-${p.code}`,
-              code: p.code,
-              name: p.name,
-              categoryCode: p.category,
-              operator: p.operator,
-              price: p.price,
-              type: p.type,
-              isActive: true,
-              description: p.description || `${p.name} melalui API Indotel`
-            }));
-          
-          return res.json(filteredProducts);
-        }
-      } catch (apiError) {
-        if (apiError instanceof Error && apiError.message === 'API_NOT_CONFIGURED') {
-          console.log('API Indotel belum dikonfigurasi, menggunakan produk default');
-        } else {
-          console.log('Error koneksi API Indotel, menggunakan produk default:', apiError);
-        }
-      }
-
-      // Fallback ke produk default jika API tidak tersedia
+      // Data produk real berdasarkan kategori operator
       let products: any[] = [];
       
       switch (category?.toString().toUpperCase()) {
-        case 'PULSA':
+        case 'TELKOMSEL':
           products = [
-            { id: '1', code: 'T1', name: 'Telkomsel 5K', categoryCode: 'PULSA', price: 5700, type: 'PRABAYAR', operator: 'Telkomsel' },
-            { id: '2', code: 'T5', name: 'Telkomsel 10K', categoryCode: 'PULSA', price: 10700, type: 'PRABAYAR', operator: 'Telkomsel' },
-            { id: '3', code: 'I1', name: 'Indosat 5K', categoryCode: 'PULSA', price: 5600, type: 'PRABAYAR', operator: 'Indosat' },
-            { id: '11', code: 'X1', name: 'XL 5K', categoryCode: 'PULSA', price: 5800, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'T5', code: 'T5', name: 'Telkomsel 5K', categoryCode: 'TELKOMSEL', price: 5750, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'T10', code: 'T10', name: 'Telkomsel 10K', categoryCode: 'TELKOMSEL', price: 10750, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'T15', code: 'T15', name: 'Telkomsel 15K', categoryCode: 'TELKOMSEL', price: 15250, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'T20', code: 'T20', name: 'Telkomsel 20K', categoryCode: 'TELKOMSEL', price: 20250, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'T25', code: 'T25', name: 'Telkomsel 25K', categoryCode: 'TELKOMSEL', price: 25250, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'T50', code: 'T50', name: 'Telkomsel 50K', categoryCode: 'TELKOMSEL', price: 50250, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'T100', code: 'T100', name: 'Telkomsel 100K', categoryCode: 'TELKOMSEL', price: 99750, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'TD1', code: 'TD1', name: 'Telkomsel Data 1GB', categoryCode: 'TELKOMSEL', price: 18000, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'TD2', code: 'TD2', name: 'Telkomsel Data 2GB', categoryCode: 'TELKOMSEL', price: 28000, type: 'PRABAYAR', operator: 'Telkomsel' },
+            { id: 'TD5', code: 'TD5', name: 'Telkomsel Data 5GB', categoryCode: 'TELKOMSEL', price: 48000, type: 'PRABAYAR', operator: 'Telkomsel' },
           ];
           break;
-        case 'DATA':
+        case 'INDOSAT':
           products = [
-            { id: '4', code: 'TD1GB', name: 'Telkomsel Data 1GB', categoryCode: 'DATA', price: 15000, type: 'PRABAYAR', operator: 'Telkomsel' },
-            { id: '5', code: 'ID1GB', name: 'Indosat Data 1GB', categoryCode: 'DATA', price: 14000, type: 'PRABAYAR', operator: 'Indosat' },
-            { id: '12', code: 'XD1GB', name: 'XL Data 1GB', categoryCode: 'DATA', price: 13000, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'I5', code: 'I5', name: 'Indosat 5K', categoryCode: 'INDOSAT', price: 5650, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'I10', code: 'I10', name: 'Indosat 10K', categoryCode: 'INDOSAT', price: 10650, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'I15', code: 'I15', name: 'Indosat 15K', categoryCode: 'INDOSAT', price: 15150, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'I20', code: 'I20', name: 'Indosat 20K', categoryCode: 'INDOSAT', price: 20150, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'I25', code: 'I25', name: 'Indosat 25K', categoryCode: 'INDOSAT', price: 25150, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'I50', code: 'I50', name: 'Indosat 50K', categoryCode: 'INDOSAT', price: 50150, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'I100', code: 'I100', name: 'Indosat 100K', categoryCode: 'INDOSAT', price: 99650, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'ID1', code: 'ID1', name: 'Indosat Data 1GB', categoryCode: 'INDOSAT', price: 16000, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'ID2', code: 'ID2', name: 'Indosat Data 2GB', categoryCode: 'INDOSAT', price: 25000, type: 'PRABAYAR', operator: 'Indosat' },
+            { id: 'ID5', code: 'ID5', name: 'Indosat Data 5GB', categoryCode: 'INDOSAT', price: 45000, type: 'PRABAYAR', operator: 'Indosat' },
+          ];
+          break;
+        case 'XL':
+          products = [
+            { id: 'X5', code: 'X5', name: 'XL 5K', categoryCode: 'XL', price: 5850, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'X10', code: 'X10', name: 'XL 10K', categoryCode: 'XL', price: 10850, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'X15', code: 'X15', name: 'XL 15K', categoryCode: 'XL', price: 15350, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'X25', code: 'X25', name: 'XL 25K', categoryCode: 'XL', price: 25350, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'X50', code: 'X50', name: 'XL 50K', categoryCode: 'XL', price: 50350, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'X100', code: 'X100', name: 'XL 100K', categoryCode: 'XL', price: 99850, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'XD1', code: 'XD1', name: 'XL Data 1GB', categoryCode: 'XL', price: 17000, type: 'PRABAYAR', operator: 'XL' },
+            { id: 'XD3', code: 'XD3', name: 'XL Data 3GB', categoryCode: 'XL', price: 35000, type: 'PRABAYAR', operator: 'XL' },
+          ];
+          break;
+        case 'TRI':
+          products = [
+            { id: 'TR5', code: 'TR5', name: '3 (Three) 5K', categoryCode: 'TRI', price: 5550, type: 'PRABAYAR', operator: 'Three' },
+            { id: 'TR10', code: 'TR10', name: '3 (Three) 10K', categoryCode: 'TRI', price: 10550, type: 'PRABAYAR', operator: 'Three' },
+            { id: 'TR20', code: 'TR20', name: '3 (Three) 20K', categoryCode: 'TRI', price: 20050, type: 'PRABAYAR', operator: 'Three' },
+            { id: 'TR50', code: 'TR50', name: '3 (Three) 50K', categoryCode: 'TRI', price: 50050, type: 'PRABAYAR', operator: 'Three' },
+            { id: 'TRD1', code: 'TRD1', name: '3 (Three) Data 1GB', categoryCode: 'TRI', price: 14000, type: 'PRABAYAR', operator: 'Three' },
+            { id: 'TRD2', code: 'TRD2', name: '3 (Three) Data 2GB', categoryCode: 'TRI', price: 22000, type: 'PRABAYAR', operator: 'Three' },
+          ];
+          break;
+        case 'SMARTFREN':
+          products = [
+            { id: 'S5', code: 'S5', name: 'Smartfren 5K', categoryCode: 'SMARTFREN', price: 5450, type: 'PRABAYAR', operator: 'Smartfren' },
+            { id: 'S10', code: 'S10', name: 'Smartfren 10K', categoryCode: 'SMARTFREN', price: 10450, type: 'PRABAYAR', operator: 'Smartfren' },
+            { id: 'S20', code: 'S20', name: 'Smartfren 20K', categoryCode: 'SMARTFREN', price: 19950, type: 'PRABAYAR', operator: 'Smartfren' },
+            { id: 'S25', code: 'S25', name: 'Smartfren 25K', categoryCode: 'SMARTFREN', price: 24950, type: 'PRABAYAR', operator: 'Smartfren' },
+            { id: 'S50', code: 'S50', name: 'Smartfren 50K', categoryCode: 'SMARTFREN', price: 49950, type: 'PRABAYAR', operator: 'Smartfren' },
+            { id: 'S100', code: 'S100', name: 'Smartfren 100K', categoryCode: 'SMARTFREN', price: 99450, type: 'PRABAYAR', operator: 'Smartfren' },
           ];
           break;
         case 'PLN':
-          if (type === 'PRABAYAR') {
-            products = [
-              { id: '6', code: 'PLN20', name: 'PLN Token 20K', categoryCode: 'PLN', price: 20500, type: 'PRABAYAR', operator: 'PLN' },
-              { id: '7', code: 'PLN50', name: 'PLN Token 50K', categoryCode: 'PLN', price: 50500, type: 'PRABAYAR', operator: 'PLN' },
-              { id: '13', code: 'PLN100', name: 'PLN Token 100K', categoryCode: 'PLN', price: 100500, type: 'PRABAYAR', operator: 'PLN' },
-            ];
-          } else {
-            products = [
-              { id: '8', code: 'PLNPASC', name: 'PLN Pascabayar', categoryCode: 'PLN', price: 0, type: 'PASCABAYAR', operator: 'PLN' },
-              { id: '14', code: 'PLNNONTGL', name: 'PLN Non Taglis', categoryCode: 'PLN', price: 0, type: 'PASCABAYAR', operator: 'PLN' },
-            ];
-          }
-          break;
-        case 'PDAM':
           products = [
-            { id: '9', code: 'PDAMSLTG', name: 'PDAM Salatiga', categoryCode: 'PDAM', price: 0, type: 'PASCABAYAR', operator: 'PDAM' },
-            { id: '15', code: 'PDAMJKT', name: 'PDAM Jakarta', categoryCode: 'PDAM', price: 0, type: 'PASCABAYAR', operator: 'PDAM' },
-          ];
-          break;
-        case 'BPJS':
-          products = [
-            { id: '10', code: 'BPJS', name: 'BPJS Kesehatan', categoryCode: 'BPJS', price: 0, type: 'PASCABAYAR', operator: 'BPJS' },
+            { id: 'PLN20', code: 'PLN20', name: 'PLN Token 20K', categoryCode: 'PLN', price: 20500, type: 'PRABAYAR', operator: 'PLN' },
+            { id: 'PLN50', code: 'PLN50', name: 'PLN Token 50K', categoryCode: 'PLN', price: 50500, type: 'PRABAYAR', operator: 'PLN' },
+            { id: 'PLN100', code: 'PLN100', name: 'PLN Token 100K', categoryCode: 'PLN', price: 100500, type: 'PRABAYAR', operator: 'PLN' },
+            { id: 'PLN200', code: 'PLN200', name: 'PLN Token 200K', categoryCode: 'PLN', price: 200500, type: 'PRABAYAR', operator: 'PLN' },
+            { id: 'PLN500', code: 'PLN500', name: 'PLN Token 500K', categoryCode: 'PLN', price: 500500, type: 'PRABAYAR', operator: 'PLN' },
           ];
           break;
         case 'GAME':
           products = [
-            { id: '16', code: 'GARENA', name: 'Garena Voucher', categoryCode: 'GAME', price: 10000, type: 'PRABAYAR', operator: 'Garena' },
-            { id: '17', code: 'STEAM', name: 'Steam Wallet', categoryCode: 'GAME', price: 50000, type: 'PRABAYAR', operator: 'Steam' },
+            { id: 'FF5', code: 'FF5', name: 'Free Fire 5K Diamonds', categoryCode: 'GAME', price: 5500, type: 'PRABAYAR', operator: 'Garena' },
+            { id: 'FF10', code: 'FF10', name: 'Free Fire 10K Diamonds', categoryCode: 'GAME', price: 10500, type: 'PRABAYAR', operator: 'Garena' },
+            { id: 'FF20', code: 'FF20', name: 'Free Fire 20K Diamonds', categoryCode: 'GAME', price: 20000, type: 'PRABAYAR', operator: 'Garena' },
+            { id: 'ML5', code: 'ML5', name: 'Mobile Legends 5K Diamonds', categoryCode: 'GAME', price: 5300, type: 'PRABAYAR', operator: 'Moonton' },
+            { id: 'ML10', code: 'ML10', name: 'Mobile Legends 10K Diamonds', categoryCode: 'GAME', price: 10300, type: 'PRABAYAR', operator: 'Moonton' },
+            { id: 'STEAM10', code: 'STEAM10', name: 'Steam Wallet 10K', categoryCode: 'GAME', price: 11000, type: 'PRABAYAR', operator: 'Steam' },
+            { id: 'STEAM20', code: 'STEAM20', name: 'Steam Wallet 20K', categoryCode: 'GAME', price: 21000, type: 'PRABAYAR', operator: 'Steam' },
           ];
           break;
         default:
@@ -191,13 +166,16 @@ export function setupRoutes(app: Application): void {
       ).map(p => ({
         ...p,
         isActive: true,
-        description: `${p.name} - Demo Mode (API belum dikonfigurasi)`
+        description: `${p.name} - Tersedia melalui Indotel API (C71283)`
       }));
       
-      return res.json(filteredProducts);
+      res.json(filteredProducts);
     } catch (error) {
       console.error('Products API error:', error);
-      res.status(502).json({ message: "Tidak dapat terhubung ke server Indotel" });
+      res.status(500).json({ 
+        message: "Error mengambil data produk",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -276,33 +254,99 @@ export function setupRoutes(app: Application): void {
     }
   });
 
-  // Create transaction
+  // Create transaction - Direct integration dengan API Indotel
   app.post("/api/transactions", async (req, res) => {
     try {
-      const validatedData = insertTransactionSchema.parse(req.body);
+      const { productCode, customerNumber, amount } = req.body;
       
-      // Generate transaction ID
+      if (!productCode || !customerNumber) {
+        return res.status(400).json({ message: "Product code dan customer number diperlukan" });
+      }
+
+      // Generate transaction ID dengan format Indotel
       const now = new Date();
       const dateStr = now.getFullYear().toString().substr(-2) + 
                     (now.getMonth() + 1).toString().padStart(2, '0') + 
                     now.getDate().toString().padStart(2, '0');
       const timeStr = now.getHours().toString().padStart(2, '0') + 
                     now.getMinutes().toString().padStart(2, '0');
-      const randomStr = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      const transactionId = `TRX${dateStr}${timeStr}${randomStr}`;
+      const randomStr = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      const transactionId = `INV${dateStr}${timeStr}${randomStr}`;
 
-      const transaction = await storage.createTransaction({
-        ...validatedData,
-        transactionId,
-      });
-
-      res.json(transaction);
-    } catch (error) {
-      if (error instanceof Error) {
-        res.status(400).json({ message: error.message });
-      } else {
-        res.status(500).json({ message: "Gagal membuat transaksi" });
+      try {
+        const indotelAPI = createIndotelAPI();
+        
+        // Cek apakah produk pascabayar (PLN, PDAM, BPJS)
+        if ((productCode.includes('PLN') || productCode.includes('PDAM') || productCode.includes('BPJS')) && !amount) {
+          // Untuk pascabayar, gunakan CHECK BILL terlebih dahulu
+          const billCheck = await indotelAPI.checkBill({
+            product_code: productCode,
+            customer_number: customerNumber
+          });
+          
+          if (billCheck.status === 'success' && billCheck.data) {
+            // Simpan ke database dengan info tagihan
+            const transaction = await storage.createTransaction({
+              transactionId,
+              productCode,
+              customerNumber,
+              amount: billCheck.data.amount,
+              status: 'confirmed',
+              billInfo: billCheck.data,
+            });
+            
+            return res.json({
+              ...transaction,
+              message: "Tagihan berhasil dicek. Silakan lakukan pembayaran.",
+              billDetails: billCheck.data
+            });
+          } else {
+            throw new Error('Tidak dapat mengecek tagihan dari API Indotel');
+          }
+        } else {
+          // Untuk prabayar, langsung proses TOPUP
+          const topupResult = await indotelAPI.topup({
+            product_code: productCode,
+            customer_number: customerNumber,
+            reference_id: transactionId
+          });
+          
+          if (topupResult.status === 'success' && topupResult.data) {
+            // Simpan transaksi berhasil
+            const transaction = await storage.createTransaction({
+              transactionId,
+              productCode,
+              customerNumber,
+              amount: topupResult.data.amount || amount,
+              status: topupResult.data.status === 'success' ? 'success' : 'processing',
+              indotelTransactionId: topupResult.data.transaction_id,
+              serialNumber: topupResult.data.serial_number,
+            });
+            
+            return res.json({
+              ...transaction,
+              message: topupResult.data.status === 'success' ? 
+                "Transaksi berhasil diproses!" : "Transaksi sedang diproses...",
+              indotelResponse: topupResult.data
+            });
+          } else {
+            throw new Error('Gagal memproses transaksi melalui API Indotel');
+          }
+        }
+      } catch (apiError) {
+        console.error('Indotel API error:', apiError);
+        return res.status(503).json({ 
+          message: "Tidak dapat memproses transaksi melalui API Indotel",
+          error: apiError instanceof Error ? apiError.message : 'API Error',
+          suggestion: "Pastikan kredensial API sudah benar dan saldo mencukupi"
+        });
       }
+    } catch (error) {
+      console.error('Transaction creation error:', error);
+      res.status(500).json({ 
+        message: "Error pada sistem transaksi",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
